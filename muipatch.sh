@@ -6,30 +6,7 @@
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
 LOGS_DIR="$(dirname "$0")/logs"
 DEPTH=5
-#reshacker finder
-RE_HACKER_LNK="$WINEPREFIX/drive_c/ProgramData/Microsoft/Windows/Start Menu/Programs/Resource Hacker.lnk"
-RE_HACKER=""
-if [[ -f "$RE_HACKER_LNK" ]]; then
-    _RH=$(strings "$RE_HACKER_LNK" 2>/dev/null | grep -i '\\ResourceHacker\.exe' | head -n1)
-    if [[ -n "$_RH" ]]; then
-        _RH="$WINEPREFIX/drive_c/${_RH#?:\\}"
-        _RH="${_RH//\\//}"
-        [[ -f "$_RH" ]] && RE_HACKER="$_RH"
-    fi
-fi
-[[ -z "$RE_HACKER" ]] && RE_HACKER="$WINEPREFIX/drive_c/Program Files (x86)/Resource Hacker/ResourceHacker.exe"
-
-
-# usage and reshacker checks
-if [[ $# -eq 0 ]]; then
-    set -- "$(dirname "$0")"
-fi
-
-
-if [[ ! -f "$RE_HACKER" ]]; then
-    echo "ERROR: Resource Hacker not found at: $RE_HACKER" >&2
-    exit 1
-fi
+RE_HACKER="$(dirname "$0")/ResourceHacker.exe"
 
 mkdir -p "$LOGS_DIR"
 
