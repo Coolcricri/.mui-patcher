@@ -2,7 +2,7 @@
 # scans folders for .mui files up to 4 subfolders deep, finds matching .exe/.dll in the parent directory, and patches them with Resource Hacker.
 # Usage: patch_mui.sh <folder1> [folder2] ...
 
-#use env WINEPREFIX= to change the variable, like with normal wine, to reach resource hacker
+#use env WINEPREFIX= to change the variable, like with normal Wine
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine}"
 LOGS_DIR="$(dirname "$0")/logs"
 DEPTH=5
