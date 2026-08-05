@@ -10,6 +10,11 @@ RE_HACKER="$(dirname "$0")/ResourceHacker.exe"
 
 mkdir -p "$LOGS_DIR"
 
+# If no folder argument, default to current
+if [[ $# -eq 0 ]]; then
+    set -- "."
+fi
+
 PATCHED=0
 SKIPPED=0
 # main loop
