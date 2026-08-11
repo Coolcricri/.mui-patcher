@@ -17,8 +17,6 @@
 #include <windows.h>
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -27,36 +25,63 @@ using namespace std;
 
 static constexpr int DEPTH = 5;
 
-// Log file, written alongside console output
-static wofstream gLog;
+// Output — write UTF-8 via WriteConsoleW / WriteFile, avoids wide stream locale issues
 
-static void log(const wstring& msg, wostream& out = wcout) {
-    out << msg;
-    if (gLog.is_open()) gLog << msg;
+static HANDLE hOut;
+static HANDLE hErr;
+static HANDLE hLogFile = INVALID_HANDLE_VALUE;
+
+static void writeHandle(HANDLE h, const wstring& msg) {
+    DWORD mode;
+    if (GetConsoleMode(h, &mode)) {
+        DWORD n;
+        WriteConsoleW(h, msg.c_str(), (DWORD)msg.size(), &n, nullptr);
+    } else {
+        // redirected — convert to UTF-8
+        int bytes = WideCharToMultiByte(CP_UTF8, 0, msg.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        if (bytes > 1) {
+            vector<char> buf(bytes);
+            WideCharToMultiByte(CP_UTF8, 0, msg.c_str(), -1, buf.data(), bytes, nullptr, nullptr);
+            DWORD n;
+            WriteFile(h, buf.data(), bytes - 1, &n, nullptr);
+        }
+    }
+}
+
+static void writeLog(const wstring& msg) {
+    if (hLogFile == INVALID_HANDLE_VALUE) return;
+    int bytes = WideCharToMultiByte(CP_UTF8, 0, msg.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (bytes <= 1) return;
+    vector<char> buf(bytes);
+    WideCharToMultiByte(CP_UTF8, 0, msg.c_str(), -1, buf.data(), bytes, nullptr, nullptr);
+    DWORD n;
+    WriteFile(hLogFile, buf.data(), bytes - 1, &n, nullptr);
+}
+
+static void log(const wstring& msg, bool err = false) {
+    writeHandle(err ? hErr : hOut, msg);
+    writeLog(msg);
 }
 
 // Utilities
-// Directory of the running exe
+
 static fs::path exeDir() {
     wchar_t buf[MAX_PATH];
     GetModuleFileNameW(nullptr, buf, MAX_PATH);
     return fs::path(buf).parent_path();
 }
 
-// Case-insensitive wide string comparison
 static bool iequal(const wstring& a, const wstring& b) {
     if (a.size() != b.size()) return false;
     return equal(a.begin(), a.end(), b.begin(), [](wchar_t x, wchar_t y){ return towlower(x) == towlower(y); });
 }
 
-// Recursive mkdir
 static bool mkdirp(const fs::path& p) {
     error_code ec;
     fs::create_directories(p, ec);
     return !ec;
 }
 
-// Run a process silently and wait for it to finish
 static bool runProcess(const wstring& cmdline) {
     STARTUPINFOW si{};
     si.cb = sizeof(si);
@@ -77,10 +102,24 @@ static bool runProcess(const wstring& cmdline) {
 
 static wstring quoted(const fs::path& p) { return L"\"" + p.wstring() + L"\""; }
 
+static void cleanLog(const fs::path& p) {
+    if (!fs::exists(p)) return;
+    ifstream in(p, ios::binary);
+    vector<char> data((istreambuf_iterator<char>(in)), {});
+    in.close();
+    vector<char> out;
+    for (size_t i = 0; i < data.size(); i += 2) out.push_back(data[i]);
+    ofstream o(p, ios::binary);
+    o.write(out.data(), out.size());
+}
+
 // Entry point
 
 int wmain(int argc, wchar_t** argv) {
-    // Collect target folders from arguments, default to exe directory
+    hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    hErr = GetStdHandle(STD_ERROR_HANDLE);
+
+    // Collect target folders — default to directory containing this executable
     vector<fs::path> folders;
     if (argc <= 1)
         folders.push_back(exeDir());
@@ -91,7 +130,7 @@ int wmain(int argc, wchar_t** argv) {
     // Locate Resource Hacker
     fs::path reHacker = exeDir() / L"ResourceHacker.exe";
     if (!fs::is_regular_file(reHacker)) {
-        log(L"ERROR: ResourceHacker.exe not found next to this executable.\n", wcerr);
+        log(L"ERROR: ResourceHacker.exe not found next to this executable.\n", true);
         return 1;
     }
     log(L"Using Resource Hacker: " + reHacker.wstring() + L"\n");
@@ -99,19 +138,27 @@ int wmain(int argc, wchar_t** argv) {
     // Set up logs folder and main log file
     fs::path logsDir = exeDir() / L"logs";
     if (!mkdirp(logsDir)) {
-        log(L"ERROR: Cannot create logs directory: " + logsDir.wstring() + L"\n", wcerr);
+        log(L"ERROR: Cannot create logs directory: " + logsDir.wstring() + L"\n", true);
         return 1;
     }
-    gLog.open(logsDir / L"muimerge.log", ios::app);
-    if (!gLog.is_open()) wcerr << L"WARNING: Could not open log file.\n";
-    else gLog << L"\n=== muipatch run ===\n";
+
+    hLogFile = CreateFileW(
+        (logsDir / L"muimerge.log").c_str(),
+                           GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                           OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hLogFile != INVALID_HANDLE_VALUE) {
+        SetFilePointer(hLogFile, 0, nullptr, FILE_END);
+        writeLog(L"\n=== muipatch run ===\n");
+    } else {
+        log(L"WARNING: Could not open log file.\n", true);
+    }
 
     int patched = 0, skipped = 0;
 
-    // Main patching loop — one folder at a time
+    // Main patching loop
     for (const fs::path& folder : folders) {
         if (!fs::is_directory(folder)) {
-            log(L"WARNING: '" + folder.wstring() + L"' is not a directory, skipping.\n", wcerr);
+            log(L"WARNING: '" + folder.wstring() + L"' is not a directory, skipping.\n", true);
             ++skipped;
             continue;
         }
@@ -145,8 +192,8 @@ int wmain(int argc, wchar_t** argv) {
             fs::path localeDir     = muiFile.parent_path();
             fs::path gameDir       = localeDir.parent_path();
             wstring parentDir = localeDir.filename().wstring();
-            wstring baseName  = muiFile.filename().stem().wstring(); // e.g. game.exe
-            wstring exeStem   = fs::path(baseName).stem().wstring(); // e.g. game
+            wstring baseName  = muiFile.filename().stem().wstring();
+            wstring exeStem   = fs::path(baseName).stem().wstring();
 
             // Find matching target in parent dir, case-insensitive
             fs::path target;
@@ -157,7 +204,7 @@ int wmain(int argc, wchar_t** argv) {
             }
 
             if (target.empty()) {
-                log(L"  WARNING: No matching " + baseName + L" found in " + gameDir.wstring() + L", skipping.\n", wcerr);
+                log(L"  WARNING: No matching " + baseName + L" found in " + gameDir.wstring() + L", skipping.\n", true);
                 ++skipped;
                 continue;
             }
@@ -171,18 +218,20 @@ int wmain(int argc, wchar_t** argv) {
             // Step 1: extract resources from .mui into a .res file
             log(L"  .mui to .res conversion...\n");
             if (!runProcess(quoted(reHacker) + L" -open " + quoted(muiFile) + L" -save " + quoted(resFile) + L" -action extract -mask \"*,*\" -log " + quoted(logExtract))) {
-                log(L"  ERROR: Resource Hacker (extract) failed for " + muiFile.wstring() + L"\n", wcerr);
+                log(L"  ERROR: Resource Hacker (extract) failed for " + muiFile.wstring() + L"\n", true);
                 ++skipped;
                 continue;
             }
+            cleanLog(logExtract);
 
             // Step 2: merge .res into the target binary
             log(L"  Patching .res into " + baseName + L"...\n");
             if (!runProcess(quoted(reHacker) + L" -open " + quoted(target) + L" -save " + quoted(target) + L" -action addoverwrite -res " + quoted(resFile) + L" -mask \"*,*\" -log " + quoted(logPatch))) {
-                log(L"  ERROR: Resource Hacker (patch) failed for " + target.wstring() + L"\n", wcerr);
+                log(L"  ERROR: Resource Hacker (patch) failed for " + target.wstring() + L"\n", true);
                 ++skipped;
                 continue;
             }
+            cleanLog(logPatch);
 
             log(L"  Done: " + baseName + L"\n");
             ++patched;
@@ -190,5 +239,11 @@ int wmain(int argc, wchar_t** argv) {
     }
 
     log(L"\nFinished: " + to_wstring(patched) + L" file(s) patched, " + to_wstring(skipped) + L" skipped.\n");
+    if (hLogFile != INVALID_HANDLE_VALUE) CloseHandle(hLogFile);
+
+    for (int i = 3; i > 0; --i) {
+        log(L"Closing in " + to_wstring(i) + L"...\r");
+        Sleep(1000);
+    }
     return 0;
 }
