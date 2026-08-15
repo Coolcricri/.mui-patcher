@@ -1,7 +1,0 @@
-[Setup]
-Lang=english
-Dir=Microsoft Games
-Group=(Default)
-NoIcons=0
-SetupType=everything
-Tasks=
