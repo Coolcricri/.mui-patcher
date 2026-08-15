@@ -1,4 +1,4 @@
-# .mui-patcher
+# .mui Patcher
 Simple script that uses Resource Hacker to find all .mui files in a folder and patch them to their respective executables
 
 ## Prerequisites
