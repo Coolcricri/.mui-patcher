@@ -8,7 +8,7 @@ ResourceHacker.exe ([direct .zip download to extract from](https://www.angusj.co
 
 `muipatch.sh` Bash script: for Linux, Wine accessible in PATH
 
-`muipatch-win.sh` shell script: for Wine or Windows, modified to use with Busybox ([windows download](https://frippery.org/busybox/)), run with `"%~dp0busybox.exe" sh "%~dp0muipatch-win.sh"`
+`muipatch-win.sh` shell script: for Windows environment (also works with Wine where there is no access to a Linux shell, such as Winlator), modified to use with Busybox ([windows download](https://frippery.org/busybox/)), run with `"%~dp0busybox.exe" sh "%~dp0muipatch-win.sh"`
 
 ## What it does
 
