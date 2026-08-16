@@ -4,8 +4,8 @@
 # Usage: muipatch.sh <folder1> [folder2] ...
 
 LOGS_DIR="$(dirname "$0")/logs"
-DEPTH=5
 RE_HACKER="$(dirname "$0")/ResourceHacker.exe"
+DEPTH=5
 
 mkdir -p "$LOGS_DIR"
 
