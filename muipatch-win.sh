@@ -2,10 +2,21 @@
 # Modified version of muipatch.sh to work with busybox
 # scans folders for .mui files up to DEPTH subfolders deep, finds matching .exe/.dll in the parent directory, and patches them with Resource Hacker.
 # Usage: muipatch.sh <folder1> [folder2] ...
+#   -k  Keep original files: back up each .exe/.dll to *_original before patching.
+#       Without it, the .res file and the folder containing the .mui file are deleted after each file is patched.
 
 LOGS_DIR="$(dirname "$0")/logs"
 RE_HACKER="$(dirname "$0")/ResourceHacker.exe"
 DEPTH=5
+KEEP_ORG=0
+
+while getopts ":k" OPT; do
+    case "$OPT" in
+        k) KEEP_ORG=1 ;;
+        \?) echo "Unknown option: -$OPTARG" >&2; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
 
 mkdir -p "$LOGS_DIR"
 
@@ -39,6 +50,13 @@ for FOLDER in "$@"; do
 
         echo "  [$PARENT_DIR] Patching $BASE_NAME..."
 
+        if [[ $KEEP_ORG -eq 1 ]]; then
+            # Backup target before patching, adds _original to the name
+            TARGET_EXT=".${TARGET##*.}"
+            TARGET_ORIG="${TARGET%.*}_original${TARGET_EXT}"
+            cp "$TARGET" "$TARGET_ORIG"
+        fi
+
         echo "  .mui to .res conversion..."
         "$RE_HACKER" \
             -open "$MUI_FILE" \
@@ -60,6 +78,12 @@ for FOLDER in "$@"; do
         for _LOG in "$LOGS_DIR/$EXE_STEM-extract.log" "$LOGS_DIR/$EXE_STEM-patch.log"; do
             [[ -f "$_LOG" ]] && tr -d '\000' < "$_LOG" > "$_LOG.tmp" && mv "$_LOG.tmp" "$_LOG"
         done
+
+        if [[ $KEEP_ORG -eq 0 ]]; then
+            MUI_DIR="$(dirname "$MUI_FILE")"
+            rm -f "$TARGET.res"
+            rm -rf "$MUI_DIR"
+        fi
 
         echo "  Done: $BASE_NAME"
         PATCHED=$((PATCHED + 1))
