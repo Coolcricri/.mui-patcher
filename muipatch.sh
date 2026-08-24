@@ -2,18 +2,17 @@
 # scans folders for .mui files up to DEPTH subfolders deep, finds matching .exe/.dll in the parent directory, and patches them with Resource Hacker.
 # Usage: muipatch.sh [-k] <folder1> [folder2] ...
 #   -k  Keep original files: back up each .exe/.dll to *_original before patching.
-#       Without -k, the generated .res file and the folder containing the .mui
-#       file are deleted after each file is patched.
+#       Without it, the .res file and the folder containing the .mui file are deleted after each file is patched.
 
 WINEXE=wine
 LOGS_DIR="$(dirname "$0")/logs"
 RE_HACKER="$(dirname "$0")/ResourceHacker.exe"
 DEPTH=5
-KEEP_ORIGINAL=0
+KEEP_ORG=0
 
 while getopts ":k" OPT; do
     case "$OPT" in
-        k) KEEP_ORIGINAL=1 ;;
+        k) KEEP_ORG=1 ;;
         \?) echo "Unknown option: -$OPTARG" >&2; exit 1 ;;
     esac
 done
@@ -51,7 +50,7 @@ for FOLDER in "$@"; do
 
         echo "  [$PARENT_DIR] Patching $BASE_NAME..."
 
-        if [[ $KEEP_ORIGINAL -eq 1 ]]; then
+        if [[ $KEEP_ORG -eq 1 ]]; then
             # Backup target before patching, adds _original to the name
             TARGET_EXT=".${TARGET##*.}"
             TARGET_ORIG="${TARGET%.*}_original${TARGET_EXT}"
@@ -80,7 +79,7 @@ for FOLDER in "$@"; do
             [[ -f "$_LOG" ]] && tr -d '\000' < "$_LOG" > "$_LOG.tmp" && mv "$_LOG.tmp" "$_LOG"
         done
 
-        if [[ $KEEP_ORIGINAL -eq 0 ]]; then
+        if [[ $KEEP_ORG -eq 0 ]]; then
             MUI_DIR="$(dirname "$MUI_FILE")"
             rm -f "$TARGET.res"
             rm -rf "$MUI_DIR"
