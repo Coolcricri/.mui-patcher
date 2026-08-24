@@ -82,7 +82,8 @@ for FOLDER in "$@"; do
         if [[ $KEEP_ORG -eq 0 ]]; then
             MUI_DIR="$(dirname "$MUI_FILE")"
             rm -f "$TARGET.res"
-            rm -rf "$MUI_DIR"
+            rm -f "$MUI_FILE"
+            rmdir "$MUI_DIR" 2>/dev/null
         fi
 
         echo "  Done: $BASE_NAME"
