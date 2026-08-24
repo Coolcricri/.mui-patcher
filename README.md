@@ -16,7 +16,7 @@ Either execute the script in the folder wanted, or pass it as a variable. It cre
 
 By default it will search 5 subfolders deep for the .mui file (and thus 4 layers for the .exe/.dll file), then match them case insensitively (chess.exe -> Chess.exe.mui)
 
-The script intentionally leaves .res files it makes for simplicity, but original executables are modified without backups left behind, unlike non-CLI behaviour of the app used
+If a `-k` variable is passed, all original and intermediary files will be kept (for .exe and .dll they will be renamed), otherwise all unneeded files will be removed for each successful patch.
 
 ## About project
 This uses a better method of patching .mui files (taken from [this older project](https://github.com/Juergen74/install-windows7games) that I did not find before) that completely removes the need for python or patching scripts. The main script is not using this route yet as the installer from Aero ([the website](https://win7games.com/#games)) keeps getting modified, and I left it for later.
