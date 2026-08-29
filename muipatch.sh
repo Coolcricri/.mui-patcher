@@ -3,6 +3,7 @@
 # Usage: muipatch.sh [-k] <folder1> [folder2] ...
 #   -k  Keep original files: back up each .exe/.dll to *_original before patching.
 #       Without it, the .res file and the folder containing the .mui file are deleted after each file is patched.
+# by pasting the output of RHdump.sh at the bottom of the script, Resource Hacker becomes portable
 
 WINEXE=wine
 LOGS_DIR="$(dirname "$0")/logs"
@@ -21,6 +22,19 @@ shift $((OPTIND - 1))
 mkdir -p "$LOGS_DIR"
 
 [[ $# -eq 0 ]] && set -- "$(dirname "$0")"
+
+# prefer an existing RH copy next to this script, otherwise try to use portable payload stored
+REHACKER_PAYLOAD=$(awk '/^__RESOURCEHACKER_B64_START__$/{f=1;next} /^__RESOURCEHACKER_B64_END__$/{f=0} f' "$0")
+REHACKER_EXTRACTED=0
+if [[ -f "$RE_HACKER" ]]; then
+    :
+elif [[ -n "$REHACKER_PAYLOAD" ]]; then
+    echo "$REHACKER_PAYLOAD" | base64 -d > "$RE_HACKER"
+    REHACKER_EXTRACTED=1
+else
+    echo "ERROR: No ResourceHacker.exe found next to $0, and no portable version in the script" >&2
+    exit 1
+fi
 
 PATCHED=0
 SKIPPED=0
@@ -92,5 +106,13 @@ for FOLDER in "$@"; do
     done < <(find "$FOLDER" -maxdepth "$DEPTH" -type f -iname "*.mui" -print0)
 done
 
+if [[ $REHACKER_EXTRACTED -eq 1 ]]; then
+    rm -f "$RE_HACKER"
+fi
+
 echo ""
 echo "Finished: $PATCHED file(s) patched, $SKIPPED skipped."
+
+#Designated space to pase base64 text version of ResourceHacker.exe
+__RESOURCEHACKER_B64_START__
+__RESOURCEHACKER_B64_END__
