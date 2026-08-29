@@ -29,7 +29,7 @@ REHACKER_EXTRACTED=0
 if [[ -f "$RE_HACKER" ]]; then
     :
 elif [[ -n "$REHACKER_PAYLOAD" ]]; then
-    echo "$REHACKER_PAYLOAD" | base64 -d > "$RE_HACKER"
+    echo "$REHACKER_PAYLOAD" | base64 -d | gzip -dc > "$RE_HACKER"
     REHACKER_EXTRACTED=1
 else
     echo "ERROR: No ResourceHacker.exe found next to $0, and no portable version in the script" >&2
