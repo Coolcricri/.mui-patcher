@@ -37,5 +37,3 @@ if [[ $EMBEDDED -eq 1 ]]; then
 else
     echo "Wrote $OUT (no patcher scripts found next to this one)"
 fi
-
-echo "Wrote $OUT"
