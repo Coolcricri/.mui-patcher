@@ -8,5 +8,5 @@ if [[ ! -f "$SRC" ]]; then
     exit 1
 fi
 
-gzip -9 -c "$SRC" | base64 > "$OUT"
+gzip -9 -c "$SRC" | base64 | sed 's/^/#/' > "$OUT"
 echo "Wrote $OUT"

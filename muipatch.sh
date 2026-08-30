@@ -24,7 +24,7 @@ mkdir -p "$LOGS_DIR"
 [[ $# -eq 0 ]] && set -- "$(dirname "$0")"
 
 # prefer an existing RH copy next to this script, otherwise try to use portable payload stored
-REHACKER_PAYLOAD=$(awk '/^__RESOURCEHACKER_B64_START__$/{f=1;next} /^__RESOURCEHACKER_B64_END__$/{f=0} f' "$0")
+REHACKER_PAYLOAD=$(awk '/^#__RESOURCEHACKER_B64_START__$/{f=1;next} /^#__RESOURCEHACKER_B64_END__$/{f=0} f' "$0" | tr -d '#\r')
 REHACKER_EXTRACTED=0
 if [[ -f "$RE_HACKER" ]]; then
     :
@@ -114,5 +114,5 @@ echo ""
 echo "Finished: $PATCHED file(s) patched, $SKIPPED skipped."
 
 #Designated space to pase base64 text version of ResourceHacker.exe
-__RESOURCEHACKER_B64_START__
-__RESOURCEHACKER_B64_END__
+#__RESOURCEHACKER_B64_START__
+#__RESOURCEHACKER_B64_END__
