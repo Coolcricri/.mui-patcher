@@ -18,5 +18,15 @@ By default it will search 5 subfolders deep for the .mui file (and thus 4 layers
 
 If a `-k` variable is passed, all original and intermediary files will be kept (for .exe and .dll they will be renamed), otherwise all unneeded files will be removed for each successful patch.
 
+### Portable Resource Hacker
+
+As of 1.5.2 there is now a method to keep ResourceHacker.exe stored within the script itself using RHdump.sh.
+
+It compresses it with gzip, then to base 64 text, and a # is added at the start of each line to be ignored as viable code to execute within the script.
+
+The script automatically pastes it in either one or both scripts if available, otherwise gives a text file with the final contents.
+
+When run, both versions of the script convert the text back to an executable to us, then deletes it before exiting, but only if an existing ResourceHacker.exe is not already present.
+
 ## About project
 This uses a better method of patching .mui files (taken from [this older project](https://github.com/Juergen74/install-windows7games) that I did not find before) that completely removes the need for python or patching scripts. The main script is not using this route yet as the installer from Aero ([the website](https://win7games.com/#games)) keeps getting modified, and I left it for later.
